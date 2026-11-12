@@ -68,6 +68,7 @@ Compress-token é um servidor MCP (Model Context Protocol) que expõe 3 ferramen
 |---|---|
 | `smart_read` | Lê arquivos com cache SHA-256 (sem re-leituras), modo outline (estrutura) e slice (trecho) |
 | `compress_context` | Comprime logs, código e texto — remove ruído sem perder informação técnica |
+| `compress_image` | Redimensiona e comprime imagens (JPG, PNG, WebP, GIF, TIFF, AVIF) — reduz tokens de visão |
 | `token_savings_report` | Relatório de tokens economizados na sessão e no histórico |
 
 ---
@@ -81,6 +82,7 @@ Compress-token é um servidor MCP (Model Context Protocol) que expõe 3 ferramen
 | Texto longo / histórico | 15–30% |
 | Re-leitura de arquivo sem mudanças | 100% |
 | Outline de arquivo > 250 linhas | até 85% |
+| Imagens (tokens de visão) | 50–90% |
 
 ---
 

@@ -12,7 +12,15 @@
     "prepare": "npm run build",
     "dev": "tsc --watch"
   },
-  "keywords": ["mcp", "tokens", "compression", "claude", "cursor", "vscode", "ai"],
+  "keywords": [
+    "mcp",
+    "tokens",
+    "compression",
+    "claude",
+    "cursor",
+    "vscode",
+    "ai"
+  ],
   "author": "F7 Brasil",
   "license": "MIT",
   "repository": {
@@ -21,6 +29,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "sharp": "^0.35.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {

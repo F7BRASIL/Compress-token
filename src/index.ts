@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { compress } from './compressor.js';
 import { calculateMetrics, recordMetrics, formatMetricsReport, loadStats } from './metrics.js';
 import { smartRead } from './contextManager.js';
+import { compressImage, formatImageReport } from './imageCompressor.js';
 
 const server = new Server(
   { name: 'compress-token', version: '1.0.0' },
@@ -69,6 +70,37 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'compress_image',
+      description:
+        'Redimensiona e comprime uma imagem (JPG, PNG, WebP, GIF, TIFF, AVIF) para reduzir tokens de visão enviados ao modelo. Salva o resultado ao lado do original com sufixo _compressed. Retorna o caminho da imagem comprimida e as métricas de economia.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          filePath: {
+            type: 'string',
+            description: 'Caminho absoluto ou relativo da imagem.',
+          },
+          maxWidth: {
+            type: 'number',
+            description: 'Largura máxima em pixels (padrão: 1280). A imagem não será ampliada.',
+          },
+          maxHeight: {
+            type: 'number',
+            description: 'Altura máxima em pixels (padrão: 1280). A imagem não será ampliada.',
+          },
+          quality: {
+            type: 'number',
+            description: 'Qualidade de compressão de 1 a 100 (padrão: 80).',
+          },
+          outputPath: {
+            type: 'string',
+            description: 'Caminho de saída personalizado. Se omitido, salva ao lado do original com sufixo _compressed.',
+          },
+        },
+        required: ['filePath'],
+      },
+    },
+    {
       name: 'token_savings_report',
       description:
         'Retorna um relatório com o total de tokens economizados na sessão e no histórico persistido em ~/.compress-token-stats.json.',
@@ -91,6 +123,14 @@ const SmartReadInput = z.object({
 const CompressContextInput = z.object({
   text: z.string(),
   type: z.enum(['auto', 'log', 'code', 'text']).optional().default('auto'),
+});
+
+const CompressImageInput = z.object({
+  filePath: z.string(),
+  maxWidth: z.number().int().positive().optional(),
+  maxHeight: z.number().int().positive().optional(),
+  quality: z.number().int().min(1).max(100).optional(),
+  outputPath: z.string().optional(),
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -125,6 +165,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         },
       ],
     };
+  }
+
+  if (name === 'compress_image') {
+    const input = CompressImageInput.parse(args);
+    try {
+      const result = await compressImage(input.filePath, {
+        maxWidth: input.maxWidth,
+        maxHeight: input.maxHeight,
+        quality: input.quality,
+        outputPath: input.outputPath,
+      });
+      return { content: [{ type: 'text', text: formatImageReport(result) }] };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { content: [{ type: 'text', text: `Erro ao comprimir imagem: ${msg}` }], isError: true };
+    }
   }
 
   if (name === 'token_savings_report') {
