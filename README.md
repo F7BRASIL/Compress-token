@@ -44,6 +44,20 @@ Desenvolvido pela [F7 Brasil](https://github.com/f7brasil) — funciona nativame
 3. **Reinicie** o cliente (Claude Desktop / Cursor / VS Code) para o servidor ser reconhecido.
 4. O `npx` vai compilar e iniciar o servidor automaticamente na primeira vez — não é necessário instalar nada manualmente.
 
+### Localização dos arquivos de configuração
+
+| Sistema | Cliente | Arquivo |
+|---|---|---|
+| **Windows** | Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` |
+| **Windows** | Cursor | `.cursor\mcp.json` (projeto) ou `%USERPROFILE%\.cursor\mcp.json` (global) |
+| **Windows** | VS Code | `.vscode\mcp.json` |
+| **macOS** | Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+| **macOS** | Cursor | `~/.cursor/mcp.json` |
+| **macOS** | VS Code | `.vscode/mcp.json` |
+| **Linux** | Claude Desktop | `~/.config/Claude/claude_desktop_config.json` |
+| **Linux** | Cursor | `~/.cursor/mcp.json` |
+| **Linux** | VS Code | `.vscode/mcp.json` |
+
 ---
 
 ## O que é
@@ -70,6 +84,14 @@ Compress-token é um servidor MCP (Model Context Protocol) que expõe 3 ferramen
 
 ---
 
+## Compatibilidade
+
+Funciona em **Windows**, **macOS** e **Linux** sem nenhuma alteração.
+
+Pré-requisito: **Node.js >= 18** instalado (`node --version`). O `npx` já vem junto com o Node.
+
+As estatísticas acumuladas são salvas em `~/.compress-token-stats.json` (pasta home do usuário em qualquer sistema operacional).
+
 ## Instalação manual (opcional)
 
 ```bash
@@ -91,8 +113,7 @@ Depois aponte o `command` para `node` e `args` para o caminho absoluto de `build
 
 ## Dados persistidos
 
-As estatísticas acumuladas ficam em `~/.compress-token-stats.json` (pasta home do usuário). O arquivo
-não contém nenhum dado sensível — apenas contadores de tokens e percentuais de economia.
+As estatísticas acumuladas ficam em `~/.compress-token-stats.json` (pasta home do usuário em qualquer SO). O arquivo não contém nenhum dado sensível — apenas contadores de tokens e percentuais de economia.
 
 ---
 
