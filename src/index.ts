@@ -10,6 +10,9 @@ import { compress } from './compressor.js';
 import { calculateMetrics, recordMetrics, formatMetricsReport, loadStats } from './metrics.js';
 import { smartRead } from './contextManager.js';
 import { compressImage, formatImageReport } from './imageCompressor.js';
+import { compressStacktrace, formatStacktraceReport } from './stacktraceCompressor.js';
+import { compressCsv } from './csvCompressor.js';
+import { compressJson, formatJsonReport } from './jsonCompressor.js';
 
 const server = new Server(
   { name: 'compress-token', version: '1.0.0' },
@@ -101,6 +104,47 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'compress_stacktrace',
+      description:
+        'Remove frames internos de node_modules, node:internal e bibliotecas de terceiros de um stack trace, mantendo apenas os frames do código do usuário. Ideal para colar erros longos sem poluir o contexto.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'Stack trace completo a ser comprimido.' },
+        },
+        required: ['text'],
+      },
+    },
+    {
+      name: 'compress_csv',
+      description:
+        'Resume um CSV em shape, tipos de coluna, estatísticas básicas e amostra das primeiras linhas — em vez de enviar o arquivo inteiro. Suporta separadores , ; tab |.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'Conteúdo do CSV como string.' },
+          sampleRows: { type: 'number', description: 'Quantas linhas de amostra incluir (padrão: 5).' },
+        },
+        required: ['text'],
+      },
+    },
+    {
+      name: 'compress_json',
+      description:
+        'Comprime um JSON removendo campos nulos, truncando strings longas e limitando arrays grandes — mantendo a estrutura legível. Útil para respostas de API extensas.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'Conteúdo JSON como string.' },
+          maxStringLength: { type: 'number', description: 'Tamanho máximo de strings (padrão: 200).' },
+          maxArrayItems: { type: 'number', description: 'Máximo de itens por array (padrão: 5).' },
+          removeNulls: { type: 'boolean', description: 'Remove campos nulos (padrão: true).' },
+          maxDepth: { type: 'number', description: 'Profundidade máxima de objetos (padrão: 8).' },
+        },
+        required: ['text'],
+      },
+    },
+    {
       name: 'token_savings_report',
       description:
         'Retorna um relatório com o total de tokens economizados na sessão e no histórico persistido em ~/.compress-token-stats.json.',
@@ -123,6 +167,23 @@ const SmartReadInput = z.object({
 const CompressContextInput = z.object({
   text: z.string(),
   type: z.enum(['auto', 'log', 'code', 'text']).optional().default('auto'),
+});
+
+const CompressStacktraceInput = z.object({
+  text: z.string(),
+});
+
+const CompressCsvInput = z.object({
+  text: z.string(),
+  sampleRows: z.number().int().positive().optional(),
+});
+
+const CompressJsonInput = z.object({
+  text: z.string(),
+  maxStringLength: z.number().int().positive().optional(),
+  maxArrayItems: z.number().int().positive().optional(),
+  removeNulls: z.boolean().optional(),
+  maxDepth: z.number().int().positive().optional(),
 });
 
 const CompressImageInput = z.object({
@@ -165,6 +226,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         },
       ],
     };
+  }
+
+  if (name === 'compress_stacktrace') {
+    const input = CompressStacktraceInput.parse(args);
+    const result = compressStacktrace(input.text);
+    return { content: [{ type: 'text', text: formatStacktraceReport(result) }] };
+  }
+
+  if (name === 'compress_csv') {
+    const input = CompressCsvInput.parse(args);
+    const result = compressCsv(input.text, input.sampleRows);
+    const savings = Math.round(((input.text.length - result.report.length) / input.text.length) * 100);
+    return {
+      content: [{
+        type: 'text',
+        text: result.report + `\n\n📋 Linhas originais: ${result.originalLines} → resumo em ${result.reportLines} linhas (economizou ~${Math.max(0, savings)}% de chars)`,
+      }],
+    };
+  }
+
+  if (name === 'compress_json') {
+    const input = CompressJsonInput.parse(args);
+    const result = compressJson(input.text, {
+      maxStringLength: input.maxStringLength,
+      maxArrayItems: input.maxArrayItems,
+      removeNulls: input.removeNulls,
+      maxDepth: input.maxDepth,
+    });
+    return { content: [{ type: 'text', text: formatJsonReport(result) }] };
   }
 
   if (name === 'compress_image') {
