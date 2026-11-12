@@ -1,0 +1,8 @@
+node_modules/
+build/
+.env
+*.local.env
+*.local.json
+~/.compress-token-stats.json
+.DS_Store
+*.tsbuildinfo
