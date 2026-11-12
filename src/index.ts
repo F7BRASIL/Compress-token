@@ -13,6 +13,7 @@ import { compressImage, formatImageReport } from './imageCompressor.js';
 import { compressStacktrace, formatStacktraceReport } from './stacktraceCompressor.js';
 import { compressCsv } from './csvCompressor.js';
 import { compressJson, formatJsonReport } from './jsonCompressor.js';
+import { checkSessionBudget } from './sessionBudget.js';
 
 const server = new Server(
   { name: 'compress-token', version: '1.0.0' },
@@ -145,6 +146,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'session_budget',
+      description:
+        'Analisa o tamanho estimado do contexto da sessão e avisa quando está próximo do limite de compactação automática do Claude Code (~90k tokens). Use isso proativamente para evitar a espera de ~1 minuto que acontece quando o Claude Code força a compactação. Com autoCompress=true, comprime o texto recebido e retorna a versão menor junto com as métricas.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          conversationText: {
+            type: 'string',
+            description: 'Trecho do histórico ou contexto atual da conversa para estimar o uso.',
+          },
+          autoCompress: {
+            type: 'boolean',
+            description: 'Se true e o contexto estiver em nível warn ou critical, comprime o texto automaticamente e retorna a versão reduzida. Padrão: false.',
+          },
+        },
+        required: ['conversationText'],
+      },
+    },
+    {
       name: 'token_savings_report',
       description:
         'Retorna um relatório com o total de tokens economizados na sessão e no histórico persistido em ~/.compress-token-stats.json.',
@@ -184,6 +204,11 @@ const CompressJsonInput = z.object({
   maxArrayItems: z.number().int().positive().optional(),
   removeNulls: z.boolean().optional(),
   maxDepth: z.number().int().positive().optional(),
+});
+
+const SessionBudgetInput = z.object({
+  conversationText: z.string(),
+  autoCompress: z.boolean().optional().default(false),
 });
 
 const CompressImageInput = z.object({
@@ -271,6 +296,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const msg = err instanceof Error ? err.message : String(err);
       return { content: [{ type: 'text', text: `Erro ao comprimir imagem: ${msg}` }], isError: true };
     }
+  }
+
+  if (name === 'session_budget') {
+    const input = SessionBudgetInput.parse(args);
+    const result = checkSessionBudget(input.conversationText, input.autoCompress);
+    const lines = [result.recommendation];
+    if (result.compressedText) {
+      lines.push('', '--- Texto comprimido ---', result.compressedText);
+    }
+    return { content: [{ type: 'text', text: lines.join('\n') }] };
   }
 
   if (name === 'token_savings_report') {
