@@ -1,5 +1,12 @@
 # Compress-token
 
+[![Release](https://img.shields.io/github/v/release/F7BRASIL/Compress-token?color=22c55e&label=release)](https://github.com/F7BRASIL/Compress-token/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![MCP](https://img.shields.io/badge/MCP-compatible-9333ea.svg)](https://modelcontextprotocol.io)
+[![Node >= 18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
+[![Platforms](https://img.shields.io/badge/platforms-Win%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](#compatibilidade)
+[![Clients](https://img.shields.io/badge/clients-Claude%20Code%20%7C%20Cursor%20%7C%20VS%20Code%20%7C%20Windsurf-0ea5e9.svg)](#-para-agentes-de-ia--instalação-com-um-comando)
+
 **Servidor MCP para economia real de tokens em agentes de IA.**
 Desenvolvido pela [F7 Brasil](https://github.com/f7brasil) — funciona nativamente com Claude Code, Cursor, VS Code e Windsurf.
 
