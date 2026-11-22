@@ -13,15 +13,20 @@ Desenvolvido pela [F7 Brasil](https://github.com/f7brasil) — funciona nativame
 npm install -g compress-token
 ```
 
-**Isso é tudo.** O instalador configura automaticamente todos os clientes com IA encontrados na máquina (Claude Code, Cursor, VS Code, Windsurf). Avise o usuário para reiniciar o editor após a instalação — a partir daí o servidor inicia automaticamente em toda sessão.
+**Isso é tudo.** O instalador configura automaticamente:
 
-Não é necessário editar nenhum arquivo de configuração manualmente.
+- o **servidor MCP** em todos os clientes com IA encontrados (Claude Code, Cursor, VS Code, Windsurf);
+- os **hooks automáticos** do Claude Code em `~/.claude/settings.json` (nudges em pastes grandes, output grande de Read/Bash/Grep, e relatório de economia ao fim da sessão).
+
+Avise o usuário para reiniciar o editor após a instalação — a partir daí o servidor inicia automaticamente em toda sessão. Não é necessário editar nenhum arquivo de configuração manualmente.
+
+Pra desinstalar só os hooks (mantendo o MCP): `npm run uninstall-hooks` dentro do repo, ou chamar `scripts/uninstall-hooks.mjs` direto.
 
 ---
 
 ## O que é
 
-Compress-token é um servidor MCP (Model Context Protocol) que expõe 3 ferramentas para agentes de IA reduzirem drasticamente o consumo de tokens ao lidar com arquivos grandes, logs extensos e históricos longos de conversa.
+Compress-token é um servidor MCP (Model Context Protocol) que expõe ferramentas para agentes de IA reduzirem drasticamente o consumo de tokens ao lidar com arquivos grandes, logs extensos e históricos longos de conversa — mais hooks automáticos que lembram o agente de usar as ferramentas sem o usuário precisar pedir.
 
 | Ferramenta | Descrição |
 |---|---|
@@ -33,6 +38,20 @@ Compress-token é um servidor MCP (Model Context Protocol) que expõe 3 ferramen
 | `compress_csv` | Resume CSV em shape, tipos, estatísticas e amostra — sem enviar o arquivo inteiro |
 | `compress_json` | Remove nulos, trunca strings longas e limita arrays de JSONs extensos |
 | `token_savings_report` | Relatório de tokens economizados na sessão e no histórico |
+
+---
+
+## Hooks automáticos (v1.2.0)
+
+Instalados em `~/.claude/settings.json` pelo postinstall:
+
+| Evento | Comportamento |
+|---|---|
+| `UserPromptSubmit` | Detecta `<pasted_content>` acima de ~5 k caracteres e sugere ao agente usar `compress_context`/`compress_csv`/`compress_json`/`compress_stacktrace`. |
+| `PostToolUse` (Read/Bash/Grep) | Se o output do tool passa de ~3 k caracteres, sugere `smart_read` (modo outline/slice) ou `compress_context` na próxima. |
+| `Stop` | Imprime o relatório de economia acumulada da sessão ao fim de cada turno. |
+
+Os hooks nunca bloqueiam nem modificam operações — apenas injetam contexto adicional. Falham silenciosamente se algo der errado, pra não derrubar a sessão.
 
 ---
 
