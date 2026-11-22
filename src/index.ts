@@ -7,7 +7,14 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { compress } from './compressor.js';
-import { calculateMetrics, recordMetrics, formatMetricsReport, loadStats } from './metrics.js';
+import {
+  calculateMetrics,
+  recordMetrics,
+  recordRaw,
+  recordSaved,
+  formatMetricsReport,
+  loadStats,
+} from './metrics.js';
 import { smartRead } from './contextManager.js';
 import { compressImage, formatImageReport } from './imageCompressor.js';
 import { compressStacktrace, formatStacktraceReport } from './stacktraceCompressor.js';
@@ -226,6 +233,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const input = SmartReadInput.parse(args);
     try {
       const result = smartRead(input.filePath, input.mode, input.startLine, input.endLine);
+      /* Bug fix (v1.2): smart_read não registrava economia — stats ficavam subcontando. */
+      if (result.savedTokens > 0) {
+        /* Reconstrói originalTokens = compressed + saved pra alimentar o acumulador. */
+        const compressedTokens = Math.max(
+          0,
+          Math.ceil(result.content.length / 4),
+        );
+        recordSaved(compressedTokens + result.savedTokens, compressedTokens);
+      }
       const lines = [result.content];
       if (!result.fromCache) {
         lines.push('');
@@ -256,6 +272,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (name === 'compress_stacktrace') {
     const input = CompressStacktraceInput.parse(args);
     const result = compressStacktrace(input.text);
+    /* Bug fix (v1.2): stacktrace era quem mais economizava (70-90%) e não registrava. */
+    recordRaw(input.text, result.compressed);
     return { content: [{ type: 'text', text: formatStacktraceReport(result) }] };
   }
 
@@ -263,6 +281,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const input = CompressCsvInput.parse(args);
     const result = compressCsv(input.text, input.sampleRows);
     const savings = Math.round(((input.text.length - result.report.length) / input.text.length) * 100);
+    recordRaw(input.text, result.report);
     return {
       content: [{
         type: 'text',
@@ -279,6 +298,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       removeNulls: input.removeNulls,
       maxDepth: input.maxDepth,
     });
+    recordRaw(input.text, formatJsonReport(result));
     return { content: [{ type: 'text', text: formatJsonReport(result) }] };
   }
 
@@ -291,6 +311,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         quality: input.quality,
         outputPath: input.outputPath,
       });
+      /* Bug fix (v1.2): tokens de visão não entravam no acumulador. É a maior economia individual. */
+      if (result.estimatedSavedTokens > 0) {
+        recordSaved(result.estimatedOriginalTokens, result.estimatedCompressedTokens);
+      }
       return { content: [{ type: 'text', text: formatImageReport(result) }] };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

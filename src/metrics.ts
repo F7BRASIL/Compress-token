@@ -68,6 +68,22 @@ export function recordMetrics(metrics: CompressionMetrics): void {
   saveStats(stats);
 }
 
+/** Atalho pra callers que têm só os textos (original e comprimido). */
+export function recordRaw(original: string, compressed: string): CompressionMetrics {
+  const metrics = calculateMetrics(original, compressed);
+  recordMetrics(metrics);
+  return metrics;
+}
+
+/** Atalho pra callers que já têm os tokens calculados (ex.: smart_read, compress_image). */
+export function recordSaved(originalTokens: number, compressedTokens: number): CompressionMetrics {
+  const savedTokens = Math.max(0, originalTokens - compressedTokens);
+  const savingPercent = originalTokens > 0 ? Math.round((savedTokens / originalTokens) * 100) : 0;
+  const metrics: CompressionMetrics = { originalTokens, compressedTokens, savedTokens, savingPercent };
+  recordMetrics(metrics);
+  return metrics;
+}
+
 export function formatMetricsReport(metrics: CompressionMetrics): string {
   return (
     `📊 Tokens originais: ${metrics.originalTokens} | ` +
