@@ -41,6 +41,22 @@ Compress-token é um servidor MCP (Model Context Protocol) que expõe ferramenta
 
 ---
 
+## Dashboard de prova (v1.3.0)
+
+```bash
+compress-token-dashboard            # gera e abre no browser
+compress-token-dashboard --no-open  # só gera o arquivo
+compress-token-dashboard --out X    # saída custom
+```
+
+Gera `~/.compress-token-dashboard.html` — página estática auto-contida com:
+- Tokens economizados, requisições, tokens originais acumulados
+- Economia estimada em USD/BRL (preços oficiais de Opus 4.7, Sonnet 4.5, Haiku 5.5, GPT-4o, GPT-4o mini)
+- Taxa média de compressão com barra visual
+- Dark/light mode automático, zero dependências externas, serve como material de divulgação
+
+---
+
 ## Hooks automáticos (v1.2.0)
 
 Instalados em `~/.claude/settings.json` pelo postinstall:
