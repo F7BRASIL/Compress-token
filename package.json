@@ -1,6 +1,7 @@
 {
   "name": "compress-token",
   "version": "1.4.0",
+  "mcpName": "io.github.F7BRASIL/compress-token",
   "description": "Servidor MCP para economia de tokens em agentes de IA — F7 Brasil",
   "type": "module",
   "bin": {
