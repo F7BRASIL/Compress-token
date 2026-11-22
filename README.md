@@ -41,6 +41,31 @@ Compress-token é um servidor MCP (Model Context Protocol) que expõe ferramenta
 
 ---
 
+## Semantic cache (v1.4.0)
+
+Economia **100%** em repetições. Reaproveita respostas já computadas quando o prompt é semanticamente parecido.
+
+| Tool | Quando usar |
+|---|---|
+| `cache_get` | ANTES de chamar o modelo em perguntas prováveis de se repetir (preços de bancos, FAQ, status) |
+| `cache_set` | DEPOIS de computar uma resposta que valha reuso |
+| `cache_report` | Relatório: entradas, hits, tokens poupados por reuso |
+| `cache_clear` | Apaga tudo (manutenção) |
+
+**Como casa:** combina char-trigrams (robustez a typos) + word-bigrams sem stopwords (robustez a paráfrase). Threshold padrão 0.55 — ajustável. Storage em `~/.compress-token-cache.json`, LRU com 1000 entradas, cada resposta trunca em 50 KB.
+
+Exemplo:
+```jsonc
+// cache_get prompt="qual a taxa do Itaú em CDC 36 meses?"
+// hit: 0.859 similaridade com entrada criada na sessão anterior
+```
+
+Filtragem por `model` e `tags` permite namespaces (ex.: `tags: ["banco:itau","produto:cdc"]`) pra evitar colisão entre domínios.
+
+> v2 troca o matcher por embeddings reais (Voyage/Transformers) atrás da mesma interface. As tools permanecem.
+
+---
+
 ## Dashboard de prova (v1.3.0)
 
 ```bash

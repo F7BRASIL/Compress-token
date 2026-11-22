@@ -21,6 +21,7 @@ import { compressStacktrace, formatStacktraceReport } from './stacktraceCompress
 import { compressCsv } from './csvCompressor.js';
 import { compressJson, formatJsonReport } from './jsonCompressor.js';
 import { checkSessionBudget } from './sessionBudget.js';
+import { cacheGet, cacheSet, cacheReport, cacheClear, formatCacheReport } from './semanticCache.js';
 
 const server = new Server(
   { name: 'compress-token', version: '1.0.0' },
@@ -180,6 +181,67 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {},
       },
     },
+    {
+      name: 'cache_get',
+      description:
+        'Procura no cache semântico uma resposta já computada para um prompt similar (jaccard trigram, limiar padrão 0.82). Use ANTES de chamar o modelo em perguntas prováveis de se repetir (preços de bancos, status operacional, FAQ). Retorna hit com a resposta cacheada ou miss. Economia 100% em hits.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Pergunta/consulta a buscar.' },
+          model: { type: 'string', description: 'Opcional: só casa com o mesmo modelo (ex.: claude-sonnet-4.5).' },
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Opcional: só casa entradas que contenham todas essas tags (ex.: ["banco:itau","produto:cdc"]).',
+          },
+          threshold: {
+            type: 'number',
+            description: 'Similaridade mínima 0..1 (padrão: 0.82). Diminua pra aceitar matches mais distantes.',
+          },
+        },
+        required: ['prompt'],
+      },
+    },
+    {
+      name: 'cache_set',
+      description:
+        'Grava uma resposta no cache semântico ligada ao prompt. Use APÓS computar uma resposta que valha reusar. Entradas são indexadas por hash do (prompt, model) e substituem versões anteriores da mesma chave; LRU mantém as 1000 mais recentes.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          prompt: { type: 'string', description: 'Pergunta/consulta associada à resposta.' },
+          response: { type: 'string', description: 'Resposta a cachear (trunca em 50 KB).' },
+          model: { type: 'string', description: 'Opcional: modelo que gerou a resposta.' },
+          tags: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Opcional: etiquetas para filtrar no cache_get.',
+          },
+        },
+        required: ['prompt', 'response'],
+      },
+    },
+    {
+      name: 'cache_report',
+      description:
+        'Relatório do cache semântico: total de entradas, hits acumulados, tokens economizados por reuso e entrada mais quente.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    {
+      name: 'cache_clear',
+      description: 'Apaga TODAS as entradas do cache semântico. Ação destrutiva — use só em manutenção.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          confirm: { type: 'boolean', description: 'Precisa ser true para executar.' },
+        },
+        required: ['confirm'],
+      },
+    },
   ],
 }));
 
@@ -330,6 +392,66 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       lines.push('', '--- Texto comprimido ---', result.compressedText);
     }
     return { content: [{ type: 'text', text: lines.join('\n') }] };
+  }
+
+  if (name === 'cache_get') {
+    const input = z
+      .object({
+        prompt: z.string(),
+        model: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        threshold: z.number().min(0).max(1).optional(),
+      })
+      .parse(args);
+    const result = cacheGet(input.prompt, { model: input.model, tags: input.tags, threshold: input.threshold });
+    if (!result.hit) {
+      return {
+        content: [{
+          type: 'text',
+          text: `🗂 cache MISS — verifiquei ${result.checked} entradas (threshold ${result.threshold.toFixed(2)}). Nada semelhante o bastante.`,
+        }],
+      };
+    }
+    const e = result.entry!;
+    const header =
+      `🗂 cache HIT — similaridade ${result.similarity!.toFixed(3)} (threshold ${result.threshold.toFixed(2)}) · ` +
+      `id ${e.id} · hits ${e.hits} · tokens poupados ${e.savedTokens}`;
+    return { content: [{ type: 'text', text: `${header}\n\n${e.response}` }] };
+  }
+
+  if (name === 'cache_set') {
+    const input = z
+      .object({
+        prompt: z.string(),
+        response: z.string(),
+        model: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+      })
+      .parse(args);
+    const entry = cacheSet(input.prompt, input.response, { model: input.model, tags: input.tags });
+    return {
+      content: [{
+        type: 'text',
+        text: `🗂 cache SET · id ${entry.id} · tokens poupados estimados por hit: ${entry.savedTokens}`,
+      }],
+    };
+  }
+
+  if (name === 'cache_report') {
+    const report = cacheReport();
+    return { content: [{ type: 'text', text: formatCacheReport(report) }] };
+  }
+
+  if (name === 'cache_clear') {
+    const input = z.object({ confirm: z.boolean() }).parse(args);
+    if (!input.confirm) {
+      return {
+        content: [{ type: 'text', text: 'cache_clear: confirm=true é obrigatório.' }],
+        isError: true,
+      };
+    }
+    const removed = cacheClear();
+    return { content: [{ type: 'text', text: `🗂 cache limpo — ${removed} entradas removidas.` }] };
   }
 
   if (name === 'token_savings_report') {
