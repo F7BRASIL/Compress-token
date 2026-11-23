@@ -12,7 +12,7 @@
  * Limites padrão:
  *   - 1000 entries (LRU por `lastHitAt`)
  *   - 50 KB por response
- *   - threshold 0.82 (ajustável por chamada)
+ *   - threshold 0.55 (ajustável por chamada)
  */
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { homedir } from 'os';

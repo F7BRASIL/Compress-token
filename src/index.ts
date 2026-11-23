@@ -184,7 +184,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: 'cache_get',
       description:
-        'Procura no cache semântico uma resposta já computada para um prompt similar (jaccard trigram, limiar padrão 0.82). Use ANTES de chamar o modelo em perguntas prováveis de se repetir (preços de bancos, status operacional, FAQ). Retorna hit com a resposta cacheada ou miss. Economia 100% em hits.',
+        'Procura no cache semântico uma resposta já computada para um prompt similar (jaccard char-trigram + word-bigram sem stopwords, limiar padrão 0.55). Use ANTES de chamar o modelo em perguntas prováveis de se repetir (preços de bancos, status operacional, FAQ). Retorna hit com a resposta cacheada ou miss. Economia 100% em hits.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -197,7 +197,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
           threshold: {
             type: 'number',
-            description: 'Similaridade mínima 0..1 (padrão: 0.82). Diminua pra aceitar matches mais distantes.',
+            description: 'Similaridade mínima 0..1 (padrão: 0.55). Diminua pra aceitar matches mais distantes.',
           },
         },
         required: ['prompt'],
